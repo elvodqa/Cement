@@ -3,8 +3,13 @@ import bindbc.opengl;
 
 import std.stdio;
 import std.string;
+import core.thread;
 
 import graphics.shader;
+
+bool quit = false;
+SDL_Event event;
+SDL_Window* window;
 
 int main()
 {
@@ -14,14 +19,22 @@ int main()
 		writeln("Failed loading SDL: ", sdlStatus);
 		return 1;
 	}
-
+	if(loadSDLImage() < sdlImageSupport) { 
+		throw new Exception("Failed loading BindBC SDL_image");
+	}
+	
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 		throw new SDLException();
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+	version (OSX) {
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	} else {
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+	}
 
-	auto window = SDL_CreateWindow("Cement", SDL_WINDOWPOS_UNDEFINED,
+	window = SDL_CreateWindow("Cement", SDL_WINDOWPOS_UNDEFINED,
 			SDL_WINDOWPOS_UNDEFINED, 800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	if (!window)
 		throw new SDLException();
@@ -40,41 +53,58 @@ int main()
 		return 1;
 	}
 
+	// Load ICON using SDL2 Image
+	SDL_Surface* icon = IMG_Load("hl.png");
+	if (icon !is null) {
+		SDL_SetWindowIcon(window, icon);
+		SDL_FreeSurface(icon);
+	}
+
 	loadScene();
 	scope (exit)
 		unloadScene();
 
-	bool quit = false;
-	SDL_Event event;
 	while (!quit)
 	{
-		while (SDL_PollEvent(&event))
+		update();
+
+		render();
+
+		SDL_Delay(1000 / 60);
+	}
+	
+	return 0;
+}
+
+void update() {
+	while (SDL_PollEvent(&event))
+	{
+		switch (event.type)
 		{
-			switch (event.type)
+		case SDL_QUIT:
+			quit = true;
+			break;
+		case SDL_WINDOWEVENT:
+			switch (event.window.event)
 			{
-			case SDL_QUIT:
-				quit = true;
+			case SDL_WINDOWEVENT_RESIZED:
+				glViewport(0, 0, event.window.data1, event.window.data2);
 				break;
-			case SDL_WINDOWEVENT:
-				switch (event.window.event)
-				{
-				case SDL_WINDOWEVENT_RESIZED:
-					glViewport(0, 0, event.window.data1, event.window.data2);
-					break;
-				default: break;
-				}
-				break;
-			default:
-				break;
+			default: break;
 			}
+			break;
+		default:
+			break;
 		}
-
-		renderScene();
-
-		SDL_GL_SwapWindow(window);
 	}
 
-	return 0;
+	SDL_Delay(1000 / 64);
+}
+
+void render() {
+	renderScene();
+
+	SDL_GL_SwapWindow(window);
 }
 
 //dfmt off

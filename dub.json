@@ -5,6 +5,7 @@
 	},
 	"versions": [
 		"SDL_204",
+		"SDL_Image",
 		"GL_41"
 	],
 	"name": "cement"
