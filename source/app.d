@@ -6,77 +6,34 @@ import std.string;
 import core.thread;
 
 import graphics.shader;
+import graphics.texture;
+import graphics.bufferobject;
+import graphics.vertexarrayobject;
 
-bool quit = false;
-SDL_Event event;
-SDL_Window* window;
+import graphics.window;
+import graphics.texture;
+import graphics.sprite;
 
 int main()
 {
-	SDLSupport sdlStatus = loadSDL();
-	if (sdlStatus != sdlSupport)
-	{
-		writeln("Failed loading SDL: ", sdlStatus);
-		return 1;
-	}
-	if(loadSDLImage() < sdlImageSupport) { 
-		throw new Exception("Failed loading BindBC SDL_image");
-	}
-	
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
-		throw new SDLException();
+	Window window = new Window(800, 600, "Hell");
+	Texture hlTexture = new Texture("hl.png");
+	Sprite hlSprite = new Sprite(hlTexture);
+	hlSprite.width = 1;
+	hlSprite.height = 1;
 
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-	version (OSX) {
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	} else {
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+	while (window.isOpen()) {
+		window.clear(0.1, 0.2, 0.3);
+		window.draw(hlSprite);
+		window.display();
 	}
 
-	window = SDL_CreateWindow("Cement", SDL_WINDOWPOS_UNDEFINED,
-			SDL_WINDOWPOS_UNDEFINED, 800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-	if (!window)
-		throw new SDLException();
-
-	const context = SDL_GL_CreateContext(window);
-	if (!context)
-		throw new SDLException();
-
-	if (SDL_GL_SetSwapInterval(1) < 0)
-		writeln("Failed to set VSync");
-
-	GLSupport glStatus = loadOpenGL();
-	if (glStatus < glSupport)
-	{
-		writeln("Failed loading minimum required OpenGL version: ", glStatus);
-		return 1;
-	}
-
-	// Load ICON using SDL2 Image
-	SDL_Surface* icon = IMG_Load("hl.png");
-	if (icon !is null) {
-		SDL_SetWindowIcon(window, icon);
-		SDL_FreeSurface(icon);
-	}
-
-	loadScene();
-	scope (exit)
-		unloadScene();
-
-	while (!quit)
-	{
-		update();
-
-		render();
-
-		SDL_Delay(1000 / 60);
-	}
-	
 	return 0;
 }
 
+// ignore-------_!!_!_!_!__!_!_
 void update() {
+	/*
 	while (SDL_PollEvent(&event))
 	{
 		switch (event.type)
@@ -96,102 +53,61 @@ void update() {
 		default:
 			break;
 		}
-	}
+	}*/
 
 	SDL_Delay(1000 / 64);
 }
 
-void render() {
-	renderScene();
 
-	SDL_GL_SwapWindow(window);
-}
+BufferObject!float vbo;
+BufferObject!uint ebo;
+VertexArrayObject!(float, uint) vao;
 
-//dfmt off
-const float[] vertexBufferPositions = [
-	-0.5f, -0.5f, 0,
-	0.5f, -0.5f, 0,
-	0, 0.5f, 0
-];
-const float[] vertexBufferColors = [
-	1, 0, 0,
-	0, 1, 0,
-	0, 0, 1
-];
-//dfmt on
-GLuint vertexBuffer;
-GLuint colorBuffer;
+Texture texture;
 Shader shader;
-GLuint vertexArrayID;
+
+float[] vertices =
+[
+	//X    Y      Z     S    T
+	0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
+	0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+	-0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
+	-0.5f,  0.5f, 0.5f, 0.0f, 0.0f
+];
+
+uint[] indices =
+[
+	0, 1, 3,
+	1, 2, 3
+];
+
 
 void loadScene()
 {
-	// create OpenGL buffers for vertex position and color data
-	glGenVertexArrays(1, &vertexArrayID);
-	glBindVertexArray(vertexArrayID);
+	ebo = new BufferObject!uint(indices, BufferTarget.ElementArrayBuffer);
+	vbo = new BufferObject!float(vertices, BufferTarget.ArrayBuffer);
+	vao = new VertexArrayObject!(float, uint)(vbo, ebo);
 
-	// load position data
-	glGenBuffers(1, &vertexBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, float.sizeof * vertexBufferPositions.length,
-			vertexBufferPositions.ptr, GL_STATIC_DRAW);
-
-	// load color data
-	glGenBuffers(1, &colorBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
-	glBufferData(GL_ARRAY_BUFFER, float.sizeof * vertexBufferColors.length,
-			vertexBufferColors.ptr, GL_STATIC_DRAW);
-
-	GLint result;
-	int infoLogLength;
+	vao.vertexAttributePointer(0, 3, VertexAttribPointerType.Float, 5, 0);
+	vao.vertexAttributePointer(1, 2, VertexAttribPointerType.Float, 5, 3);
 
 	shader = new Shader("shader");
-}
-
-void unloadScene()
-{
-	glDeleteBuffers(1, &vertexBuffer);
-	glDeleteBuffers(1, &colorBuffer);
-	glDeleteVertexArrays(1, &vertexArrayID);
-	//glDeleteProgram(programID);
+	texture = new Texture("hl.png");
 }
 
 void renderScene()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
-
+	vao.bind();
 	shader.use();
-
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-	glVertexAttribPointer(0, // attribute 0. No particular reason for 0, but must match the layout in the shader.
-			3, // size
-			GL_FLOAT, // type
-			false, // normalized?
-			0, // stride
-			null  // array buffer offset
-			);
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
-	glVertexAttribPointer(1, // attribute 1
-			3, // size
-			GL_FLOAT, // type
-			false, // normalized?
-			0, // stride
-			null  // array buffer offset
-			);
-	// Draw the triangle!
-	glDrawArrays(GL_TRIANGLES, 0, 3); // Starting from vertex 0; 3 vertices total -> 1 triangle
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
+	texture.bind();
+	shader.setUniform("uTexture", 0);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
 }
 
-/// Exception for SDL related issues
-class SDLException : Exception
+void unloadScene()
 {
-	/// Creates an exception from SDL_GetError()
-	this(string file = __FILE__, size_t line = __LINE__) nothrow @nogc
-	{
-		super(cast(string) SDL_GetError().fromStringz, file, line);
-	}
+	
 }
+
+
