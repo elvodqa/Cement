@@ -19,8 +19,8 @@ int main()
 	Window window = new Window(800, 600, "Hell");
 	Texture hlTexture = new Texture("hl.png");
 	Sprite hlSprite = new Sprite(hlTexture);
-	hlSprite.width = 1;
-	hlSprite.height = 1;
+	hlSprite.width = 100;
+	hlSprite.height = 100;
 
 	while (window.isOpen()) {
 		window.clear(0.1, 0.2, 0.3);
