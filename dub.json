@@ -1,4 +1,11 @@
 {
+	"name": "cement",
+	"description": "A 2D game engine for the D programming language.",
+	"authors": [
+		"Emir Cengiz"
+	],
+	"copyright": "Copyright (c) 2023, Emir Cengiz",
+	"license": "MIT",
 	"dependencies": {
 		"bindbc-freetype": "~>1.1.0",
 		"bindbc-opengl": "~>1",
@@ -8,7 +15,6 @@
 	"dflags": [
 		"-d"
 	],
-	"name": "cement",
 	"versions": [
 		"SDL_204",
 		"SDL_Image_200",
