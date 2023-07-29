@@ -1,16 +1,19 @@
 {
 	"dependencies": {
+		"bindbc-freetype": "~>1.1.0",
 		"bindbc-opengl": "~>1",
 		"bindbc-sdl": "~>1",
 		"gl3n": "~>1.4.1"
 	},
+	"dflags": [
+		"-d"
+	],
 	"name": "cement",
 	"versions": [
 		"SDL_204",
 		"SDL_Image_200",
-		"GL_41"
-	],
-	"dflags": [
-		"-d"
+		"SDL_TTF_2_20",
+		"GL_41",
+		"FT_210"
 	]
 }

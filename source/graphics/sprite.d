@@ -14,8 +14,6 @@ import gl3n.linalg;
 import std.stdio;
 
 const string vertexShaderSource = q{
-    // vertex shader for sprite. Sprite has a texture and a position. 
-    // It will use view and projection from window. It will have a x and y position and a width and height
     #version 330 core
     layout (location = 0) in vec3 aPos;
     layout (location = 1) in vec2 aTexCoord;
@@ -28,7 +26,7 @@ const string vertexShaderSource = q{
 
     void main()
     {
-        gl_Position = vec4(aPos, 1.0) * model * view * projection;
+        gl_Position = projection * view * model * vec4(aPos, 1.0);
         TexCoord = vec2(aTexCoord.x, aTexCoord.y);
     }
 }; 
@@ -49,7 +47,8 @@ const string fragmentShaderSource = q{
 
 class Sprite : Drawable {
     Texture texture;
-    int x, y, width, height;
+    float x, y;
+    int width, height;
     private Shader shader;
     private BufferObject!float vbo;
     private BufferObject!uint ebo;
@@ -73,6 +72,10 @@ class Sprite : Drawable {
         // without using width and height. why i even did used this dunno
         float[] vertices = [
             // positions          // texture coords
+            // 0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
+            // 0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+            // -0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
+            // -0.5f,  0.5f, 0.5f, 0.0f, 0.0f
             0.0f,  0.0f, 0.0f,   0.0f, 0.0f, // top left
             0.0f,  1.0f, 0.0f,   0.0f, 1.0f, // bottom left
             1.0f,  1.0f, 0.0f,   1.0f, 1.0f, // bottom right
@@ -84,33 +87,36 @@ class Sprite : Drawable {
             1, 2, 3  // second triangle
         ];
 
-        ebo = new BufferObject!uint(indices, BufferTarget.ElementArrayBuffer);
-        vbo = new BufferObject!float(vertices, BufferTarget.ArrayBuffer);
-        vao = new VertexArrayObject!(float, uint)(vbo, ebo);
+        this.ebo = new BufferObject!uint(indices, BufferTarget.ElementArrayBuffer);
+        this.vbo = new BufferObject!float(vertices, BufferTarget.ArrayBuffer);
+        this.vao = new VertexArrayObject!(float, uint)(this.vbo, this.ebo);
 
-        vao.vertexAttributePointer(0, 3, VertexAttribPointerType.Float, 5 * float.sizeof, 0);
-        vao.vertexAttributePointer(1, 2, VertexAttribPointerType.Float, 5 * float.sizeof, 3 * float.sizeof);
+        this.vao.vertexAttributePointer(0, 3, VertexAttribPointerType.Float, 5, 0);
+        this.vao.vertexAttributePointer(1, 2, VertexAttribPointerType.Float, 5, 3);
 
+        // unbind
+        this.vao.unbind();
+        this.vbo.unbind();
+        this.ebo.unbind();
         
     }
 
     override void draw(Window window) {
+        // enable blending
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        
         vao.bind();
-        texture.bind();
         shader.use();
+        texture.bind();
 
         // set uniforms
         mat4 projection = window.view.projection;
         mat4 view = window.view.view;
         mat4 model = mat4.identity;
-        model = model.translate(x, y, 0);
+        model = model.translate(x/100, y/100, 0);
         model = model.scale(width, height, 1);
 
-        // transpose because opengl is column major and gl3n is row major
-        projection.transpose();
-        view.transpose();
-        model.transpose();
-        
         shader.setUniform("projection", projection);
         shader.setUniform("view", view);
         shader.setUniform("model", model);
@@ -118,5 +124,11 @@ class Sprite : Drawable {
 
         shader.setUniform("texture1", 0);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
+
+        // unbind
+        this.vao.unbind();
+        this.vbo.unbind();
+        this.ebo.unbind();
+        this.texture.unbind();
     }
 }
