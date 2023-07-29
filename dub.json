@@ -18,7 +18,6 @@
 	"versions": [
 		"SDL_204",
 		"SDL_Image_200",
-		"SDL_TTF_2_20",
 		"GL_41",
 		"FT_210"
 	]

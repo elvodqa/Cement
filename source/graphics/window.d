@@ -51,9 +51,6 @@ public:
         if(loadSDLImage() < sdlImageSupport) { 
             throw new Exception("Failed loading BindBC SDL_image");
         }
-        if (loadSDLTTF() < sdlTTFSupport) {
-            throw new Exception("Failed loading BindBC SDL_ttf");
-        }
         
         if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
             throw new SDLException();
