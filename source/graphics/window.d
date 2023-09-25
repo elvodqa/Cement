@@ -4,14 +4,13 @@ import bindbc.sdl;
 import bindbc.opengl;
 import bindbc.freetype;
 
-
 import std.string;
 import std.stdio;
+import std.functional;
 
 import graphics.drawable;
 import graphics.view;
 
-import system.event;
 
 struct Bounds {
     int x;
@@ -30,6 +29,7 @@ private:
     bool running;
     View defaultView;
 
+    void delegate(Window*, int, int) onResizedCallback;
     
 public:
     @property Bounds bounds() {
@@ -45,7 +45,7 @@ public:
         SDLSupport sdlStatus = loadSDL();
         if (sdlStatus != sdlSupport)
         {
-            writeln("Failed loading SDL: ", sdlStatus);
+            SDL_Log("Failed loading SDL: ", sdlStatus);
             throw new Exception("Failed loading BindBC SDL");
         }
         if(loadSDLImage() < sdlImageSupport) { 
@@ -54,10 +54,7 @@ public:
         
         if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
             throw new SDLException();
-        
-        if (TTF_Init() < 0)
-            throw new SDLException();
-        
+
         if (IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG) < 0)
             throw new SDLException();
         
@@ -83,12 +80,12 @@ public:
             throw new SDLException();
 
         if (SDL_GL_SetSwapInterval(1) < 0)
-            writeln("Failed to set VSync");
+            SDL_Log("Failed to set VSync");
 
         GLSupport glStatus = loadOpenGL();
         if (glStatus < glSupport)
         {
-            writeln("Failed loading minimum required OpenGL version: ", glStatus);
+            SDL_Log("Failed loading minimum required OpenGL version: ", glStatus);
             throw new Exception("Failed loading BindBC OpenGL");
         }
 
@@ -101,6 +98,8 @@ public:
 
         this.running = true;
         glViewport(0, 0, this.width, this.height);
+
+
     }
 
     void clear(float r, float g, float b) {
@@ -113,20 +112,38 @@ public:
         
     }
 
+    void onResized(void delegate(Window*, int, int) dg) { 
+        onResizedCallback = dg;
+    }
+    void onResized(void function(Window*, int, int) fn) { return onResized(toDelegate(fn)); }
+
     bool isOpen() {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
+                IMG_Quit();
+                SDL_Quit();
+                SDL_Log("Window quit.");
                 return false;
             }
-            else if (e.type == SDL_WINDOWEVENT) {
-                if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
+            if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED) {
+                auto win = SDL_GetWindowFromID(e.window.windowID);
+                if (win == this.window) {
                     glViewport(0, 0, e.window.data1, e.window.data2);
-                    //this.defaultView.resize(e.window.data1, e.window.data2);
+                    int w, h;
+                    SDL_GetWindowSize(window, &w, &h);
+                    if (this.onResizedCallback != null) {
+                        this.onResizedCallback(&this, w, h);
+                    }  
                 }
             }
         }
         return true;
+    }
+
+    void setBounds(Bounds bounds) {
+        SDL_SetWindowPosition(window, bounds.x, bounds.y);
+        SDL_SetWindowSize(window, bounds.width, bounds.height);
     }
 
     void setView(View view) {
@@ -145,78 +162,6 @@ public:
     @property View view() {
         return this.defaultView;
     }
-
-    /*
-    bool pollEvent(Event e) {
-        SDL_Event sdlEvent;
-        while (SDL_PollEvent(&sdlEvent)) {
-            auto win = SDL_GetWindowFromID(sdlEvent.window.windowID);
-            if (this.window != win)
-                continue;
-            switch (sdlEvent.type) {
-                case SDL_QUIT:
-                    e.type = EventType.Closed;
-                    return true;
-                case SDL_KEYDOWN:
-                    e.type = EventType.KeyDown;
-                    e.key = cast(Keys) sdlEvent.key.keysym.sym;
-                    return true;
-                case SDL_KEYUP:
-                    e.type = EventType.KeyUp;
-                    e.key = cast(Keys) sdlEvent.key.keysym.sym;
-                    return true;
-                case SDL_MOUSEBUTTONDOWN:
-                    e.type = EventType.MouseButtonDown;
-                    e.mouse.button = cast(MouseButton) sdlEvent.button.button;
-                    return true;
-                case SDL_MOUSEBUTTONUP:
-                    e.type = EventType.MouseButtonUp;
-                    e.mouse.button = cast(MouseButton) sdlEvent.button.button;
-                    return true;
-                case SDL_MOUSEMOTION:
-                    e.type = EventType.MouseMove;
-                    e.mouse.x = sdlEvent.motion.x;
-                    e.mouse.y = sdlEvent.motion.y;
-                    return true;
-                case SDL_MOUSEWHEEL:
-                    e.type = EventType.MouseWheel;
-                    e.mouse.wheelX = sdlEvent.wheel.x;
-                    e.mouse.wheelY = sdlEvent.wheel.y;
-                    return true;
-                case SDL_WINDOWEVENT:
-                    switch (sdlEvent.window.event) {
-                        case SDL_WINDOWEVENT_RESIZED:
-                            e.type = EventType.WindowResized;
-                            e.window.width = sdlEvent.window.data1;
-                            e.window.height = sdlEvent.window.data2;
-                            return true;
-                        case SDL_WINDOWEVENT_FOCUS_GAINED:
-                            e.type = EventType.WindowFocusGained;
-                            return true;
-                        case SDL_WINDOWEVENT_FOCUS_LOST:
-                            e.type = EventType.WindowFocusLost;
-                            return true;
-                        case SDL_WINDOWEVENT_ENTER:
-                            e.type = EventType.WindowMouseEnter;
-                            return true;
-                        case SDL_WINDOWEVENT_LEAVE:
-                            e.type = EventType.WindowMouseLeave;
-                            return true;
-                        case SDL_WINDOWEVENT_MOVED:
-                            e.type = EventType.WindowMoved;
-                            e.window.x = sdlEvent.window.data1;
-                            e.window.y = sdlEvent.window.data2;
-                            return true;
-                        default:
-                            return false;
-                    }
-                default:
-                    return false;
-            }
-        }
-        return false;
-    }
-    */
 }
 
 class SDLException : Exception

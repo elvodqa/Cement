@@ -4,13 +4,19 @@ import graphics.window;
 import graphics.texture;
 import graphics.sprite;
 import graphics.text;
-import system.event;
+import graphics.view;
 
-import system.input;
+
+void onResize(Window* window, int w, int h) {
+	writeln(w, "x", h);
+	window.setView(new View(0, 0, w, h));
+}
 
 int main()
 {
-	Window window = new Window(800, 600, "Hell");
+	Window window;
+
+	window = new Window(1200, 720, "Test");
 	Texture hlTexture = new Texture("hl.png");
 	Sprite hlSprite = new Sprite(hlTexture);
 	hlSprite.width = 256;
@@ -21,23 +27,16 @@ int main()
 	Text text = new Text("./aller.ttf", 32);
 	text.text = "Hello, World!";
 	text.y = 300;
-	writeln(window.bounds.width);
+
+	window.onResized = &onResize;
 
 	while (window.isOpen()) {
-		auto state = Keyboard.getState();
-		if (state.isKeyDown(Keys.W)) {
-			writeln("W pressed");
-		}
-		if (state.isKeyUp(Keys.W)) {
-			writeln("W released");
-		}
-
+		hlSprite.x += 1;
+	
 		window.clear(0.1, 0.2, 0.3);
 		window.draw(hlSprite);
 		window.draw(text);
 		window.display();
-
-		window.sleep(1000/60);
 	}
 
 	return 0;

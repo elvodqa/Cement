@@ -1,5 +1,6 @@
 module graphics.shader;
 
+import bindbc.sdl;
 import bindbc.opengl;
 import gl3n.linalg;
 
@@ -18,7 +19,7 @@ class Shader {
 
         loadShader();
 
-        writeln("Shader " ~ name ~ " loaded");
+        SDL_Log(("Shader " ~ name ~ " loaded").toStringz);
     }
 
     this(string vertexSource, string fragmentSource) {
@@ -27,7 +28,7 @@ class Shader {
 
         loadShader();
 
-        writeln("Shader loaded from source");
+        SDL_Log("Shader loaded from source");
     }
 
     private void loadShader() {
@@ -45,7 +46,7 @@ class Shader {
         {
             char* errorMessage;
             glGetShaderInfoLog(vertexShaderID, infoLogLength, null, errorMessage);
-            writeln(errorMessage[0 .. infoLogLength]);
+            SDL_Log(errorMessage[0 .. infoLogLength].toStringz);
         }
 
         // Fragment shader
@@ -58,7 +59,7 @@ class Shader {
         {
             char* errorMessage;
             glGetShaderInfoLog(fragmentShaderID, infoLogLength, null, errorMessage);
-            writeln(errorMessage[0 .. infoLogLength]);
+            SDL_Log(errorMessage[0 .. infoLogLength].toStringz);
         }
 
         // Link
@@ -72,7 +73,7 @@ class Shader {
         {
             char* errorMessage;
             glGetProgramInfoLog(programID, infoLogLength, null, errorMessage);
-            writeln(errorMessage[0 .. infoLogLength]);
+            SDL_Log(errorMessage[0 .. infoLogLength].toStringz);
         }
 
         // Delete unused compiled shaders because program is linked already
